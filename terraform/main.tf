@@ -97,3 +97,19 @@ resource "gitlab_branch_protection" "helloworld_iac_main" {
   merge_access_level = "developer"
   allow_force_push   = false
 }
+
+# ── Mirroring GitLab → GitHub ─────────────────────────────────────────────────
+
+resource "gitlab_project_mirror" "helloworld_to_github" {
+  project             = gitlab_project.helloworld.id
+  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/helloworld.git"
+  enabled             = true
+  keep_divergent_refs = false
+}
+
+resource "gitlab_project_mirror" "helloworld_iac_to_github" {
+  project             = gitlab_project.helloworld_iac.id
+  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/helloworld-iac.git"
+  enabled             = true
+  keep_divergent_refs = false
+}
