@@ -63,7 +63,6 @@ resource "gitlab_project" "helloworld" {
   visibility_level = "private"
   import_url       = "${local.github_base}/helloworld.git"
 
-  initialize_with_readme           = false
   merge_method                     = "merge"
   squash_option                    = "default_off"
   remove_source_branch_after_merge = true
@@ -84,7 +83,6 @@ resource "gitlab_project" "helloworld_iac" {
   visibility_level = "private"
   import_url       = "${local.github_base}/helloworld-iac.git"
 
-  initialize_with_readme           = false
   merge_method                     = "merge"
   squash_option                    = "default_off"
   remove_source_branch_after_merge = true
