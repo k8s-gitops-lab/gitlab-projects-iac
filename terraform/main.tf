@@ -98,6 +98,27 @@ resource "gitlab_branch_protection" "helloworld_iac_main" {
   allow_force_push   = false
 }
 
+resource "gitlab_project" "ci_templates" {
+  name             = "ci-templates"
+  path             = "ci-templates"
+  namespace_id     = gitlab_group.infra.id
+  description      = "Templates CI/CD partagés — importé depuis GitHub"
+  visibility_level = "private"
+  import_url       = "${local.github_base}/ci-templates.git"
+
+  merge_method                     = "merge"
+  squash_option                    = "default_off"
+  remove_source_branch_after_merge = true
+}
+
+resource "gitlab_branch_protection" "ci_templates_main" {
+  project            = gitlab_project.ci_templates.id
+  branch             = "main"
+  push_access_level  = "maintainer"
+  merge_access_level = "developer"
+  allow_force_push   = false
+}
+
 # ── Mirroring GitLab → GitHub ─────────────────────────────────────────────────
 
 resource "gitlab_project_mirror" "helloworld_to_github" {
