@@ -31,28 +31,6 @@ resource "gitlab_group_variable" "ci_templates_ref" {
   environment_scope = "*"
 }
 
-# ── Projet sandbox pour valider le workflow IaC ───────────────────────────────
-
-resource "gitlab_project" "sandbox" {
-  name                   = "sandbox"
-  path                   = "sandbox"
-  namespace_id           = gitlab_group.infra.id
-  description            = "Projet de test géré par Terraform"
-  visibility_level       = "private"
-  initialize_with_readme = true
-
-  merge_method                     = "merge"
-  squash_option                    = "default_off"
-  remove_source_branch_after_merge = true
-}
-
-resource "gitlab_branch_protection" "sandbox_main" {
-  project            = gitlab_project.sandbox.id
-  branch             = "main"
-  push_access_level  = "maintainer"
-  merge_access_level = "developer"
-  allow_force_push   = false
-}
 
 # ── Projets applicatifs importés depuis GitHub ────────────────────────────────
 
