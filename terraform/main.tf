@@ -59,6 +59,7 @@ resource "gitlab_branch_protection" "sandbox_main" {
 resource "gitlab_project" "helloworld" {
   name             = "helloworld"
   path             = "helloworld"
+  namespace_id     = gitlab_group.infra.id
   description      = "Application helloworld — importé depuis GitHub"
   visibility_level = "private"
   import_url       = "${local.github_base}/helloworld.git"
@@ -79,6 +80,7 @@ resource "gitlab_branch_protection" "helloworld_main" {
 resource "gitlab_project" "helloworld_iac" {
   name             = "helloworld-iac"
   path             = "helloworld-iac"
+  namespace_id     = gitlab_group.infra.id
   description      = "IaC helloworld — importé depuis GitHub"
   visibility_level = "private"
   import_url       = "${local.github_base}/helloworld-iac.git"
