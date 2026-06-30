@@ -2,6 +2,12 @@ locals {
   github_base = "https://github.com/poc-devops-elkouhen"
 }
 
+# ── Paramètres application GitLab ─────────────────────────────────────────────
+
+resource "gitlab_application_settings" "main" {
+  import_sources = ["git"]
+}
+
 # ── Groupe dédié aux ressources gérées par Terraform ─────────────────────────
 
 resource "gitlab_group" "infra" {
@@ -45,6 +51,8 @@ resource "gitlab_project" "helloworld" {
   merge_method                     = "merge"
   squash_option                    = "default_off"
   remove_source_branch_after_merge = true
+
+  depends_on = [gitlab_application_settings.main]
 }
 
 resource "gitlab_branch_protection" "helloworld_main" {
@@ -66,6 +74,8 @@ resource "gitlab_project" "helloworld_iac" {
   merge_method                     = "merge"
   squash_option                    = "default_off"
   remove_source_branch_after_merge = true
+
+  depends_on = [gitlab_application_settings.main]
 }
 
 resource "gitlab_branch_protection" "helloworld_iac_main" {
@@ -87,6 +97,8 @@ resource "gitlab_project" "ci_templates" {
   merge_method                     = "merge"
   squash_option                    = "default_off"
   remove_source_branch_after_merge = true
+
+  depends_on = [gitlab_application_settings.main]
 }
 
 resource "gitlab_branch_protection" "ci_templates_main" {
