@@ -28,6 +28,15 @@ resource "gitlab_group_variable" "registry_url" {
   environment_scope = "*"
 }
 
+resource "gitlab_group_variable" "docker_auth_config" {
+  group             = gitlab_group.infra.id
+  key               = "DOCKER_AUTH_CONFIG"
+  value             = jsonencode({ auths = { "ghcr.io" = { auth = base64encode("x-token:${var.github_token}") } } })
+  protected         = false
+  masked            = true
+  environment_scope = "*"
+}
+
 resource "gitlab_group_variable" "ci_templates_ref" {
   group             = gitlab_group.infra.id
   key               = "CI_TEMPLATES_REF"
