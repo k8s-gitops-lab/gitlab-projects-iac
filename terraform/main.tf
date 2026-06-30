@@ -40,7 +40,7 @@ resource "gitlab_group_variable" "ghcr_token" {
 resource "gitlab_group_variable" "ci_templates_ref" {
   group             = gitlab_group.infra.id
   key               = "CI_TEMPLATES_REF"
-  value             = "v1.13.1"
+  value             = "v1.14.0"
   protected         = false
   masked            = false
   environment_scope = "*"
