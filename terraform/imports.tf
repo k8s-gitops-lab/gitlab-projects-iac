@@ -13,7 +13,3 @@ import {
   id = "6:CI_TEMPLATES_REF:*"
 }
 
-import {
-  to = gitlab_project.sandbox
-  id = "4"
-}
