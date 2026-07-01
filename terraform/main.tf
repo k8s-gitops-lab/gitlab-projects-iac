@@ -7,12 +7,14 @@ locals {
   app_projects = merge([
     for app in var.apps : {
       "${app.name}" = {
-        name        = app.name
-        description = app.description != "" ? app.description : "Application ${app.name} — importé depuis GitHub"
+        name               = app.name
+        description        = app.description != "" ? app.description : "Application ${app.name}${app.importFromGithub ? " — importé depuis GitHub" : ""}"
+        import_from_github = app.importFromGithub
       }
       "${app.name}-iac" = {
-        name        = "${app.name}-iac"
-        description = "IaC ${app.name}${app.description != "" ? " — ${app.description}" : ""} — importé depuis GitHub"
+        name               = "${app.name}-iac"
+        description        = "IaC ${app.name}${app.description != "" ? " — ${app.description}" : ""}${app.importFromGithub ? " — importé depuis GitHub" : ""}"
+        import_from_github = app.importFromGithub
       }
     }
   ]...)
@@ -87,8 +89,11 @@ resource "gitlab_group_variable" "github_token_ci" {
 }
 
 
-# ── Projets applicatifs importés depuis GitHub ────────────────────────────────
+# ── Projets applicatifs ────────────────────────────────────────────────────────
 # Une entrée par app déclarée dans platform-gitops (cf. locals.app_projects).
+# import_url n'est renseigné que pour les apps historiques (importFromGithub:
+# true, ex. helloworld) dont le repo GitHub préexiste ; les nouvelles apps sont
+# créées vides, le code n'existant pas encore ailleurs.
 
 resource "gitlab_project" "app" {
   for_each = local.app_projects
@@ -98,7 +103,7 @@ resource "gitlab_project" "app" {
   namespace_id     = gitlab_group.infra.id
   description      = each.value.description
   visibility_level = "private"
-  import_url       = "${local.github_base}/${each.value.name}.git"
+  import_url       = each.value.import_from_github ? "${local.github_base}/${each.value.name}.git" : null
 
   merge_method                     = "merge"
   squash_option                    = "default_off"
