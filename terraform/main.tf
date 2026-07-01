@@ -1,5 +1,21 @@
 locals {
   github_base = "https://github.com/poc-devops-elkouhen"
+
+  # Une entrée par projet GitLab applicatif : le repo de code (<name>) et son
+  # repo manifests (<name>-iac), dérivés de var.apps (généré depuis
+  # platform-gitops/argocd/apps/*.yaml — cf. toolbox/scripts/render-gitlab-projects.py).
+  app_projects = merge([
+    for app in var.apps : {
+      "${app.name}" = {
+        name        = app.name
+        description = app.description != "" ? app.description : "Application ${app.name} — importé depuis GitHub"
+      }
+      "${app.name}-iac" = {
+        name        = "${app.name}-iac"
+        description = "IaC ${app.name}${app.description != "" ? " — ${app.description}" : ""} — importé depuis GitHub"
+      }
+    }
+  ]...)
 }
 
 # ── Paramètres application GitLab ─────────────────────────────────────────────
@@ -55,16 +71,34 @@ resource "gitlab_group_variable" "ci_templates_ref" {
   environment_scope = "*"
 }
 
+# Réutilise le token GitHub déjà fourni au Terraform (var.github_token, utilisé
+# pour le mirroring GitLab → GitHub) pour l'exposer au pipeline GitLab CI de
+# platform-gitops : clone de platform-cicd/toolbox (privés) et push des commits
+# générés vers les dépôts GitHub canoniques. Confirmé explicitement par
+# l'utilisateur (duplication volontaire d'un secret existant vers une CI/CD
+# variable GitLab).
+resource "gitlab_group_variable" "github_token_ci" {
+  group             = gitlab_group.infra.id
+  key               = "GITHUB_TOKEN"
+  value             = var.github_token
+  protected         = false
+  masked            = true
+  environment_scope = "*"
+}
+
 
 # ── Projets applicatifs importés depuis GitHub ────────────────────────────────
+# Une entrée par app déclarée dans platform-gitops (cf. locals.app_projects).
 
-resource "gitlab_project" "helloworld" {
-  name             = "helloworld"
-  path             = "helloworld"
+resource "gitlab_project" "app" {
+  for_each = local.app_projects
+
+  name             = each.value.name
+  path             = each.value.name
   namespace_id     = gitlab_group.infra.id
-  description      = "Application helloworld — importé depuis GitHub"
+  description      = each.value.description
   visibility_level = "private"
-  import_url       = "${local.github_base}/helloworld.git"
+  import_url       = "${local.github_base}/${each.value.name}.git"
 
   merge_method                     = "merge"
   squash_option                    = "default_off"
@@ -73,31 +107,10 @@ resource "gitlab_project" "helloworld" {
   depends_on = [gitlab_application_settings.main]
 }
 
-resource "gitlab_branch_protection" "helloworld_main" {
-  project            = gitlab_project.helloworld.id
-  branch             = "main"
-  push_access_level  = "maintainer"
-  merge_access_level = "developer"
-  allow_force_push   = false
-}
+resource "gitlab_branch_protection" "app_main" {
+  for_each = local.app_projects
 
-resource "gitlab_project" "helloworld_iac" {
-  name             = "helloworld-iac"
-  path             = "helloworld-iac"
-  namespace_id     = gitlab_group.infra.id
-  description      = "IaC helloworld — importé depuis GitHub"
-  visibility_level = "private"
-  import_url       = "${local.github_base}/helloworld-iac.git"
-
-  merge_method                     = "merge"
-  squash_option                    = "default_off"
-  remove_source_branch_after_merge = true
-
-  depends_on = [gitlab_application_settings.main]
-}
-
-resource "gitlab_branch_protection" "helloworld_iac_main" {
-  project            = gitlab_project.helloworld_iac.id
+  project            = gitlab_project.app[each.key].id
   branch             = "main"
   push_access_level  = "maintainer"
   merge_access_level = "developer"
@@ -127,18 +140,45 @@ resource "gitlab_branch_protection" "ci_templates_main" {
   allow_force_push   = false
 }
 
-# ── Mirroring GitLab → GitHub ─────────────────────────────────────────────────
+# ── platform-gitops ────────────────────────────────────────────────────────────
+# Les PR/MR se font sur ce projet GitLab (pas sur GitHub) : import initial
+# depuis GitHub puis développement normal sur GitLab, comme les autres projets
+# applicatifs ci-dessus. Le merge d'une MR déclenche directement le pipeline
+# `.gitlab-ci.yml` (pas de mirror pull, pas de délai). Le pipeline pousse ses
+# commits générés sur ce même projet (origin, via CI_JOB_TOKEN) ; le push
+# mirror ci-dessous propage ensuite vers GitHub, dépôt que Flux/ArgoCD
+# continuent de surveiller sans changement de configuration.
 
-resource "gitlab_project_mirror" "helloworld_to_github" {
-  project             = gitlab_project.helloworld.id
-  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/helloworld.git"
-  enabled             = true
-  keep_divergent_refs = false
+resource "gitlab_project" "platform_gitops" {
+  name             = "platform-gitops"
+  path             = "platform-gitops"
+  namespace_id     = gitlab_group.infra.id
+  description      = "GitOps source de vérité — importé depuis GitHub, mirroré vers GitHub"
+  visibility_level = "private"
+  import_url       = "${local.github_base}/platform-gitops.git"
+
+  merge_method                     = "merge"
+  squash_option                    = "default_off"
+  remove_source_branch_after_merge = true
+
+  depends_on = [gitlab_application_settings.main]
 }
 
-resource "gitlab_project_mirror" "helloworld_iac_to_github" {
-  project             = gitlab_project.helloworld_iac.id
-  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/helloworld-iac.git"
+resource "gitlab_branch_protection" "platform_gitops_main" {
+  project            = gitlab_project.platform_gitops.id
+  branch             = "main"
+  push_access_level  = "maintainer"
+  merge_access_level = "developer"
+  allow_force_push   = false
+}
+
+# ── Mirroring GitLab → GitHub ─────────────────────────────────────────────────
+
+resource "gitlab_project_mirror" "app_to_github" {
+  for_each = local.app_projects
+
+  project             = gitlab_project.app[each.key].id
+  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/${each.value.name}.git"
   enabled             = true
   keep_divergent_refs = false
 }

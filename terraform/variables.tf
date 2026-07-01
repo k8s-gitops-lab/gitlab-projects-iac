@@ -15,3 +15,12 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "apps" {
+  description = "Applications déclarées dans platform-gitops (généré par la CI depuis apps.auto.tfvars.json, ne pas éditer à la main)"
+  type = list(object({
+    name        = string
+    description = optional(string, "")
+  }))
+  default = []
+}
