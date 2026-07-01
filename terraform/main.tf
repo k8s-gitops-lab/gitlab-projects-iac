@@ -187,3 +187,10 @@ resource "gitlab_project_mirror" "app_to_github" {
   enabled             = true
   keep_divergent_refs = false
 }
+
+resource "gitlab_project_mirror" "platform_gitops_to_github" {
+  project             = gitlab_project.platform_gitops.id
+  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/platform-gitops.git"
+  enabled             = true
+  keep_divergent_refs = false
+}
