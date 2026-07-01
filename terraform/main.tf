@@ -88,6 +88,29 @@ resource "gitlab_group_variable" "github_token_ci" {
   environment_scope = "*"
 }
 
+# Token dédié pour les pipelines applicatifs : ci-templates/gitlab-ci.yml
+# (.fetch-scripts, semantic-release) référence GITLAB_PUSH_TOKEN pour cloner
+# infra/ci-templates et créer tags/releases, mais aucune variable ne
+# l'alimentait — jamais provisionné. Un Group Access Token dédié (plutôt que
+# de réutiliser var.gitlab_token, le PAT root donné à Terraform) garde ce
+# credential CI révocable indépendamment et limité au groupe infra.
+resource "gitlab_group_access_token" "ci_push" {
+  group        = gitlab_group.infra.id
+  name         = "ci-push-token"
+  access_level = "maintainer"
+  expires_at   = "2027-06-30"
+  scopes       = ["api", "read_repository", "write_repository"]
+}
+
+resource "gitlab_group_variable" "gitlab_push_token" {
+  group             = gitlab_group.infra.id
+  key               = "GITLAB_PUSH_TOKEN"
+  value             = gitlab_group_access_token.ci_push.token
+  protected         = false
+  masked            = true
+  environment_scope = "*"
+}
+
 
 # ── Projets applicatifs ────────────────────────────────────────────────────────
 # Une entrée par app déclarée dans platform-gitops (cf. locals.app_projects).
