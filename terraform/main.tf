@@ -37,15 +37,6 @@ resource "gitlab_group" "infra" {
 
 # ── Variables CI/CD du groupe infra ──────────────────────────────────────────
 
-resource "gitlab_group_variable" "registry_url" {
-  group             = gitlab_group.infra.id
-  key               = "REGISTRY_URL"
-  value             = "registry.192.168.33.100.nip.io"
-  protected         = false
-  masked            = false
-  environment_scope = "*"
-}
-
 resource "gitlab_group_variable" "ghcr_token" {
   group             = gitlab_group.infra.id
   key               = "GHCR_TOKEN"
