@@ -15,6 +15,14 @@ applique ce dépôt avec `approvePlan: auto`. Tout push sur `main` est donc
 appliqué sans revue humaine ni plan intermédiaire à valider : les changements
 doivent être vérifiés avant merge, pas après.
 
+L'état Terraform (`terraform/versions.tf`, backend `kubernetes`) est stocké
+dans un `Secret` du namespace `flux-system` du cluster — pas de state local.
+Pour un dry-run avant merge, il faut donc soit exécuter `terraform plan`
+depuis un poste avec accès au cluster (kubeconfig + `var.gitlab_token`/
+`var.github_token`), soit se fier à la revue du diff `apps.auto.tfvars.json`
+généré par `render-gitlab-projects.py` (voir "Origine de l'inventaire" plus
+bas) : il n'y a pas de plan CI automatique exposé avant application.
+
 ## Modèle des projets applicatifs
 
 - **Nouvelles apps** (`importFromGithub: false`, valeur par défaut) : créées

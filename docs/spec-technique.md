@@ -46,8 +46,8 @@ lesquels surveillent GitHub et non GitLab.
 
 | Variable | Usage |
 |---|---|
-| `REGISTRY_URL` | URL du registry d'images utilisé par les pipelines applicatifs |
-| `GHCR_TOKEN` | Token pour push/pull sur GHCR |
+| `REGISTRY_URL` | Legacy (ancien registry interne), non consommée par `ci-templates` (qui pousse vers `ghcr.io` en dur) |
+| `GHCR_TOKEN` | Token pour push/pull sur GHCR, utilisé par `ci-templates` |
 | `ZSCALER_CA_B64` | CA interceptée par le proxy Zscaler, encodée en base64 |
 | `CI_TEMPLATES_REF` | Référence (tag) des templates CI/CD partagés à utiliser |
 | `GITHUB_TOKEN` | Réutilisation du token GitHub fourni à Terraform, exposé aux pipelines GitLab CI de `platform-gitops` |

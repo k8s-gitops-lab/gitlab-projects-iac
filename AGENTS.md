@@ -7,6 +7,8 @@ variables CI/CD partagées, projets applicatifs et `platform-gitops` lui-même).
 Appliqué automatiquement par le `Terraform` Flux CR `gitlab-iac`
 (`platform-gitops/argocd/platform/tf-controller/terraform-gitlab.yaml`),
 `approvePlan: auto` — **tout push sur `main` est appliqué sans revue humaine**.
+Détail du rôle et du modèle des projets applicatifs (nouvelles apps vs apps
+historiques) : [`docs/spec-fonctionnelle.md`](./docs/spec-fonctionnelle.md).
 
 ## Fichiers clés
 
@@ -16,19 +18,6 @@ Appliqué automatiquement par le `Terraform` Flux CR `gitlab-iac`
 | `terraform/variables.tf` | Déclare `var.apps` (liste `{name, description, importFromGithub}`) consommée par le `for_each` |
 | `terraform/apps.auto.tfvars.json` | **Généré** par `toolbox/scripts/render-gitlab-projects.py` depuis l'inventaire `platform-gitops` (`argocd/apps/*.yaml`) — ne pas éditer à la main |
 | `terraform/moved.tf` | Blocs `moved` de la migration hardcodé → `for_each` (ne pas supprimer sans vérifier que le state a bien été migré) |
-
-## Modèle des projets applicatifs
-
-- **Nouvelles apps** (`importFromGithub: false`, défaut) : créées **vides** sur
-  GitLab (pas d'`import_url`) — leur code n'existe pas encore sur GitHub. Elles
-  sont ensuite mirorées vers GitHub via `gitlab_project_mirror.app_to_github`
-  une fois du contenu poussé.
-- **Apps historiques** (`importFromGithub: true`, ex. `helloworld`) : importées
-  depuis un repo GitHub préexistant, puis mirorées de la même façon.
-- `platform-gitops` suit toujours le mode "historique" (`gitlab_project.platform_gitops`
-  avec `import_url`) : les MR se font directement sur ce projet GitLab, et le
-  push mirror (`gitlab_project_mirror.platform_gitops_to_github`) propage vers
-  GitHub pour qu'ArgoCD/Flux continuent de le surveiller sans changement.
 
 ## Ce qu'il ne faut pas faire
 
