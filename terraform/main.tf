@@ -1,5 +1,5 @@
 locals {
-  github_base = "https://github.com/poc-devops-elkouhen"
+  github_base = "https://github.com/k8s-gitops-lab"
 
   # Une entrée par projet GitLab applicatif : le repo de code (<name>) et son
   # repo manifests (<name>-iac), dérivés de var.apps (généré depuis
@@ -206,14 +206,14 @@ resource "gitlab_project_mirror" "app_to_github" {
   for_each = local.app_projects
 
   project             = gitlab_project.app[each.key].id
-  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/${each.value.name}.git"
+  url                 = "https://oauth2:${var.github_token}@github.com/k8s-gitops-lab/${each.value.name}.git"
   enabled             = true
   keep_divergent_refs = false
 }
 
 resource "gitlab_project_mirror" "platform_gitops_to_github" {
   project             = gitlab_project.platform_gitops.id
-  url                 = "https://oauth2:${var.github_token}@github.com/poc-devops-elkouhen/platform-gitops.git"
+  url                 = "https://oauth2:${var.github_token}@github.com/k8s-gitops-lab/platform-gitops.git"
   enabled             = true
   keep_divergent_refs = false
 }
