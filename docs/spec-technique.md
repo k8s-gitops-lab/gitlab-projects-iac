@@ -5,8 +5,8 @@
 - `terraform/main.tf` : ressources `gitlab_application_settings`,
   `gitlab_group.infra`, variables de groupe, projets applicatifs
   (`gitlab_project.app` en `for_each` sur `local.app_projects`), protections
-  de branche, projet `ci-templates`, projet `platform-gitops`, et les
-  `gitlab_project_mirror` vers GitHub.
+  de branche, `gitlab_group.shared_ci` et son projet `ci-templates`, projet
+  `platform-gitops`, et les `gitlab_project_mirror` vers GitHub.
 - `terraform/variables.tf` : déclare `var.gitlab_url`, `var.gitlab_token`
   (sensible), `var.github_token` (sensible) et `var.apps` (liste
   `{name, description, importFromGithub}`), consommée par le `for_each`.
@@ -34,6 +34,21 @@ squash désactivé par défaut. `import_url` n'est renseigné que si
 `gitlab_branch_protection.app_main` protège `main` (push réservé aux
 maintainers, merge ouvert aux developers, force-push interdit).
 
+## Groupe `shared-ci` et projet `ci-templates`
+
+`gitlab_group.shared_ci` est un groupe top-level, indépendant de `infra` (pas
+de lien hiérarchique, donc pas d'héritage des variables de groupe `infra`).
+`gitlab_project.ci_templates` y est créé (namespace `shared-ci`), importé
+depuis GitHub. `gitlab_branch_protection.ci_templates_main` protège `main`
+avec les mêmes règles que les projets applicatifs.
+
+Ce projet n'a pas de `.gitlab-ci.yml` à sa racine (pas de pipeline propre) :
+son fichier `gitlab-ci.yml` n'est consommé que via `include:` par les
+pipelines des apps, lesquelles s'exécutent dans le namespace `infra` et
+héritent donc normalement des variables du groupe `infra` (`GHCR_TOKEN`,
+`ZSCALER_CA_B64`, `GITLAB_PUSH_TOKEN`). Aucune variable de groupe n'a donc
+besoin d'être dupliquée sur `shared-ci`.
+
 ## Mirroring vers GitHub
 
 `gitlab_project_mirror.app_to_github` et
@@ -50,7 +65,7 @@ lesquels surveillent GitHub et non GitLab.
 | `ZSCALER_CA_B64` | CA interceptée par le proxy Zscaler, encodée en base64 |
 | `CI_TEMPLATES_REF` | Référence (tag) des templates CI/CD partagés à utiliser |
 | `GITHUB_TOKEN` | Réutilisation du token GitHub fourni à Terraform, exposé aux pipelines GitLab CI de `platform-gitops` |
-| `GITLAB_PUSH_TOKEN` | Group Access Token dédié (`gitlab_group_access_token.ci_push`), scopes `api`, `read_repository`, `write_repository`, pour les pipelines applicatifs (ex. `ci-templates/gitlab-ci.yml`) |
+| `GITLAB_PUSH_TOKEN` | Group Access Token dédié (`gitlab_group_access_token.ci_push`), scopes `api`, `read_repository`, `write_repository`, pour les pipelines applicatifs (héritée par les apps dans `infra`, qui l'utilisent pour cloner `shared-ci/ci-templates` via le job `.fetch-scripts`) |
 
 ## Sécurité et limites
 

@@ -35,6 +35,19 @@ resource "gitlab_group" "infra" {
   visibility_level = "private"
 }
 
+# ── Groupe dédié aux templates CI/CD partagés ─────────────────────────────────
+# Groupe indépendant de infra (pas de lien hiérarchique) : ci-templates n'a pas
+# de pipeline propre (pas de .gitlab-ci.yml à la racine, seulement le fichier
+# gitlab-ci.yml consommé via `include:` par les apps), donc aucune variable de
+# groupe n'a besoin d'y être dupliquée.
+
+resource "gitlab_group" "shared_ci" {
+  name             = "shared-ci"
+  path             = "shared-ci"
+  description      = "Templates CI/CD partagés, réutilisables par toute app"
+  visibility_level = "private"
+}
+
 # ── Variables CI/CD du groupe infra ──────────────────────────────────────────
 
 resource "gitlab_group_variable" "ghcr_token" {
@@ -81,7 +94,7 @@ resource "gitlab_group_variable" "github_token_ci" {
 
 # Token dédié pour les pipelines applicatifs : ci-templates/gitlab-ci.yml
 # (.fetch-scripts, semantic-release) référence GITLAB_PUSH_TOKEN pour cloner
-# infra/ci-templates et créer tags/releases, mais aucune variable ne
+# shared-ci/ci-templates et créer tags/releases, mais aucune variable ne
 # l'alimentait — jamais provisionné. Un Group Access Token dédié (plutôt que
 # de réutiliser var.gitlab_token, le PAT root donné à Terraform) garde ce
 # credential CI révocable indépendamment et limité au groupe infra.
@@ -139,7 +152,7 @@ resource "gitlab_branch_protection" "app_main" {
 resource "gitlab_project" "ci_templates" {
   name             = "ci-templates"
   path             = "ci-templates"
-  namespace_id     = gitlab_group.infra.id
+  namespace_id     = gitlab_group.shared_ci.id
   description      = "Templates CI/CD partagés — importé depuis GitHub"
   visibility_level = "private"
   import_url       = "${local.github_base}/ci-templates.git"

@@ -3,9 +3,10 @@
 ## Rôle du dépôt
 
 Le dépôt déclare en Terraform les projets GitLab de la plateforme : le groupe
-`infra`, les variables CI/CD partagées, les projets applicatifs et le projet
-`platform-gitops` lui-même. Il est la source de vérité de l'organisation
-GitLab, au même titre que `platform-gitops` l'est pour l'état Kubernetes.
+`infra`, les variables CI/CD partagées, les projets applicatifs, le groupe
+`shared-ci` et son projet `ci-templates`, et le projet `platform-gitops`
+lui-même. Il est la source de vérité de l'organisation GitLab, au même titre
+que `platform-gitops` l'est pour l'état Kubernetes.
 
 ## Application automatique
 
