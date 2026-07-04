@@ -3,10 +3,11 @@
 ## Rôle du dépôt
 
 Le dépôt déclare en Terraform les projets GitLab de la plateforme : le groupe
-`infra`, les variables CI/CD partagées, les projets applicatifs, le groupe
-`shared-ci` et son projet `ci-templates`, et le projet `platform-gitops`
-lui-même. Il est la source de vérité de l'organisation GitLab, au même titre
-que `platform-gitops` l'est pour l'état Kubernetes.
+`infra` et ses variables CI/CD partagées, un groupe dédié par app (avec ses
+projets applicatifs), le groupe `shared-ci` et son projet `ci-templates`, et
+le projet `platform-gitops` lui-même. Il est la source de vérité de
+l'organisation GitLab, au même titre que `platform-gitops` l'est pour l'état
+Kubernetes.
 
 ## Application automatique
 
@@ -36,6 +37,11 @@ bas) : il n'y a pas de plan CI automatique exposé avant application.
   directement sur ce projet GitLab, et le push mirror propage vers GitHub
   pour qu'ArgoCD/Flux continuent de le surveiller sans changement de
   configuration.
+- Chaque app est isolée dans son propre groupe GitLab top-level (`group`,
+  ex. `hello-groupe` pour `helloworld`), déclaré explicitement dans son
+  descriptor — pas dérivé du nom de l'app, et sans lien hiérarchique avec
+  `infra`. Les repos de code et manifests d'une même app vivent tous deux
+  dans ce groupe.
 
 ## Origine de l'inventaire des apps
 
@@ -46,8 +52,12 @@ Ajouter une app se fait donc côté `platform-gitops`, pas dans ce dépôt.
 
 ## Variables CI/CD partagées
 
-Le groupe `infra` porte les variables consommées par les pipelines des
-projets qu'il contient : URL de registry, token GHCR, CA Zscaler, référence
-des templates CI, token GitHub pour le mirroring, et un token GitLab dédié
-(`GITLAB_PUSH_TOKEN`) pour les pipelines applicatifs qui doivent pousser des
-commits ou créer des tags/releases.
+Le groupe `infra` porte les variables de référence : URL de registry, token
+GHCR, CA Zscaler, référence des templates CI, token GitHub pour le
+mirroring, et un token GitLab dédié (`GITLAB_PUSH_TOKEN`) pour les pipelines
+qui doivent pousser des commits ou créer des tags/releases. Les groupes
+d'app étant top-level et indépendants de `infra` (donc sans héritage), les
+variables consommées par les pipelines applicatifs (`GHCR_TOKEN`,
+`ZSCALER_CA_B64`, `GITLAB_PUSH_TOKEN`) sont dupliquées sur chaque groupe
+d'app, de même que l'accès du bot `GITLAB_PUSH_TOKEN` à `shared-ci` (pour
+cloner `ci-templates`) et à son propre groupe (pour pousser).

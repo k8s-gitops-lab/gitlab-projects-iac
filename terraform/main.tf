@@ -4,20 +4,33 @@ locals {
   # Une entrée par projet GitLab applicatif : le repo de code (<name>) et son
   # repo manifests (<name>-iac), dérivés de var.apps (généré depuis
   # platform-gitops/argocd/apps/*.yaml — cf. toolbox/scripts/render-gitlab-projects.py).
+  # `group` porte le groupe GitLab dédié à l'app (ex. "hello-groupe" pour
+  # helloworld), déclaré explicitement dans le descriptor de l'app.
   app_projects = merge([
     for app in var.apps : {
       "${app.name}" = {
         name               = app.name
+        group              = app.group
         description        = app.description != "" ? app.description : "Application ${app.name}${app.importFromGithub ? " — importé depuis GitHub" : ""}"
         import_from_github = app.importFromGithub
       }
       "${app.name}-iac" = {
         name               = "${app.name}-iac"
+        group              = app.group
         description        = "IaC ${app.name}${app.description != "" ? " — ${app.description}" : ""}${app.importFromGithub ? " — importé depuis GitHub" : ""}"
         import_from_github = app.importFromGithub
       }
     }
   ]...)
+
+  # Un groupe GitLab dédié par app (clé = nom du groupe, valeur = nom de
+  # l'app propriétaire, pour les descriptions). Top-level, indépendant de
+  # infra : chaque app est isolée dans son propre groupe.
+  app_groups = { for app in var.apps : app.group => app.name }
+
+  # Valeurs partagées entre plusieurs `gitlab_group_variable`, dupliquées par
+  # groupe d'app faute d'héritage entre groupes top-level indépendants.
+  zscaler_ca_b64 = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUU2RENDQTlDZ0F3SUJBZ0lKQU51K21DMkp0M3VUTUEwR0NTcUdTSWIzRFFFQkN3VUFNSUdoTVFzd0NRWUQKVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFUk1BOEdBMVVFQnhNSVUyRnVJRXB2YzJVeApGVEFUQmdOVkJBb1RERnB6WTJGc1pYSWdTVzVqTGpFVk1CTUdBMVVFQ3hNTVduTmpZV3hsY2lCSmJtTXVNUmd3CkZnWURWUVFERXc5YWMyTmhiR1Z5SUZKdmIzUWdRMEV4SWpBZ0Jna3Foa2lHOXcwQkNRRVdFM04xY0hCdmNuUkEKZW5OallXeGxjaTVqYjIwd0lCY05NalV3TWpBeU1UWXpPREl3V2hnUE1qQTFNakEyTWpBeE5qTTRNakJhTUlHaApNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVJNQThHQTFVRUJ4TUlVMkZ1CklFcHZjMlV4RlRBVEJnTlZCQW9UREZwelkyRnNaWElnU1c1akxqRVZNQk1HQTFVRUN4TU1Xbk5qWVd4bGNpQkoKYm1NdU1SZ3dGZ1lEVlFRREV3OWFjMk5oYkdWeUlGSnZiM1FnUTBFeElqQWdCZ2txaGtpRzl3MEJDUUVXRTNOMQpjSEJ2Y25SQWVuTmpZV3hsY2k1amIyMHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCCkFRQ3BQdEpOTEZsRk9BUVVWL3AyZ2RxTkp6VytUbU9iT1l6b0ZhNDZqVGpnU3hwTnoxNVVSWDhlTWYvVU5iTm0KMXl0OU9QNmVMYlRscWt4T1VvRmJkUmhINlhJc2REMFdobUlOZGhjcnltZ3BKWG41T2JSV1d6L2twdnlhU0ZWVwpxL3N1QmdTYThSanNjOWo2TFdjUVprSnJqcGxjSTZpRW5TWUVTMEgwbFdXa01nNzZjM1NGUXdCaGgxblVwbFlJCncxL2tuOXBObUpLR3lpczNZRGZ5Skk2RjEzNlp4RXppSTB2ZUN3dTczMWVFcWRHb3FnZDRmemVWVjErN1ZjRjYKaERQUGxYcUFEZVJ0RytFUENnaVZNRjR4cm1YakpGMGtCOTJtUnNYT3FMQktBMTJGdkZNZWRoaWlzUE1wK3ZhcwpRVXgyd3hUUU1kMTRCbC92WFg3VUs2ZTVBZ01CQUFHamdnRWRNSUlCR1RBZEJnTlZIUTRFRmdRVXViZmRTczNECkRneUduVjNmN0J3RWFjVk9tTjh3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekNCMWdZRFZSMGpCSUhPTUlITGdCUzUKdDkxS3pjTU9ESWFkWGQvc0hBUnB4VTZZMzZHQnA2U0JwRENCb1RFTE1Ba0dBMVVFQmhNQ1ZWTXhFekFSQmdOVgpCQWdUQ2tOaGJHbG1iM0p1YVdFeEVUQVBCZ05WQkFjVENGTmhiaUJLYjNObE1SVXdFd1lEVlFRS0V3eGFjMk5oCmJHVnlJRWx1WXk0eEZUQVRCZ05WQkFzVERGcHpZMkZzWlhJZ1NXNWpMakVZTUJZR0ExVUVBeE1QV25OallXeGwKY2lCU2IyOTBJRU5CTVNJd0lBWUpLb1pJaHZjTkFRa0JGaE56ZFhCd2IzSjBRSHB6WTJGc1pYSXVZMjl0Z2drQQoyNzZZTFltM2U1TXdEZ1lEVlIwUEFRSC9CQVFEQWdHR01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQloyNTd1CjZ4Y0RuZnEzM0RoZGkwaC9nKzVrejV3dG8rMHcxVS95MlYzYkFmd096dlNpS2ZyT0dFc3NZTlZkdjE3cVNPVUMKakZzL2t2Q21ablMyWkFyL2lBeGVEOHFrQzZaYjU1NTJMUkNpVjRYSEJhZU42Q2QrWVRKTWdWS21CeEZyc3hsRQpQbWF1eE8xYUl3VGYzZVFtRCtuNVluN01rS0NsSWVka2Zyd0hxNHMzWnZ5dnlwbEF3alN3eWVzbUV6LzVHZGs5ClhkaHNmcklsV3E4RHlKaWpOR3lzQk9jZVlPQjZqbUNpanR3RkcwMnViQWZpSU1aL0JSQzgrTzd3anpEZ1JBTHoKT0MyK21ReXRTa0tvOEs2TXNrZkVkalFHWmN0S2FQSVNHMzQ0UFFZL3k0ektCZjFKTnBTZnNUQnphSTlsajdQSwptN3EyVHpNcDhzNUR1R2JLCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
 }
 
 # ── Paramètres application GitLab ─────────────────────────────────────────────
@@ -62,7 +75,7 @@ resource "gitlab_group_variable" "ghcr_token" {
 resource "gitlab_group_variable" "zscaler_ca_b64" {
   group             = gitlab_group.infra.id
   key               = "ZSCALER_CA_B64"
-  value             = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUU2RENDQTlDZ0F3SUJBZ0lKQU51K21DMkp0M3VUTUEwR0NTcUdTSWIzRFFFQkN3VUFNSUdoTVFzd0NRWUQKVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFUk1BOEdBMVVFQnhNSVUyRnVJRXB2YzJVeApGVEFUQmdOVkJBb1RERnB6WTJGc1pYSWdTVzVqTGpFVk1CTUdBMVVFQ3hNTVduTmpZV3hsY2lCSmJtTXVNUmd3CkZnWURWUVFERXc5YWMyTmhiR1Z5SUZKdmIzUWdRMEV4SWpBZ0Jna3Foa2lHOXcwQkNRRVdFM04xY0hCdmNuUkEKZW5OallXeGxjaTVqYjIwd0lCY05NalV3TWpBeU1UWXpPREl3V2hnUE1qQTFNakEyTWpBeE5qTTRNakJhTUlHaApNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVJNQThHQTFVRUJ4TUlVMkZ1CklFcHZjMlV4RlRBVEJnTlZCQW9UREZwelkyRnNaWElnU1c1akxqRVZNQk1HQTFVRUN4TU1Xbk5qWVd4bGNpQkoKYm1NdU1SZ3dGZ1lEVlFRREV3OWFjMk5oYkdWeUlGSnZiM1FnUTBFeElqQWdCZ2txaGtpRzl3MEJDUUVXRTNOMQpjSEJ2Y25SQWVuTmpZV3hsY2k1amIyMHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCCkFRQ3BQdEpOTEZsRk9BUVVWL3AyZ2RxTkp6VytUbU9iT1l6b0ZhNDZqVGpnU3hwTnoxNVVSWDhlTWYvVU5iTm0KMXl0OU9QNmVMYlRscWt4T1VvRmJkUmhINlhJc2REMFdobUlOZGhjcnltZ3BKWG41T2JSV1d6L2twdnlhU0ZWVwpxL3N1QmdTYThSanNjOWo2TFdjUVprSnJqcGxjSTZpRW5TWUVTMEgwbFdXa01nNzZjM1NGUXdCaGgxblVwbFlJCncxL2tuOXBObUpLR3lpczNZRGZ5Skk2RjEzNlp4RXppSTB2ZUN3dTczMWVFcWRHb3FnZDRmemVWVjErN1ZjRjYKaERQUGxYcUFEZVJ0RytFUENnaVZNRjR4cm1YakpGMGtCOTJtUnNYT3FMQktBMTJGdkZNZWRoaWlzUE1wK3ZhcwpRVXgyd3hUUU1kMTRCbC92WFg3VUs2ZTVBZ01CQUFHamdnRWRNSUlCR1RBZEJnTlZIUTRFRmdRVXViZmRTczNECkRneUduVjNmN0J3RWFjVk9tTjh3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekNCMWdZRFZSMGpCSUhPTUlITGdCUzUKdDkxS3pjTU9ESWFkWGQvc0hBUnB4VTZZMzZHQnA2U0JwRENCb1RFTE1Ba0dBMVVFQmhNQ1ZWTXhFekFSQmdOVgpCQWdUQ2tOaGJHbG1iM0p1YVdFeEVUQVBCZ05WQkFjVENGTmhiaUJLYjNObE1SVXdFd1lEVlFRS0V3eGFjMk5oCmJHVnlJRWx1WXk0eEZUQVRCZ05WQkFzVERGcHpZMkZzWlhJZ1NXNWpMakVZTUJZR0ExVUVBeE1QV25OallXeGwKY2lCU2IyOTBJRU5CTVNJd0lBWUpLb1pJaHZjTkFRa0JGaE56ZFhCd2IzSjBRSHB6WTJGc1pYSXVZMjl0Z2drQQoyNzZZTFltM2U1TXdEZ1lEVlIwUEFRSC9CQVFEQWdHR01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQloyNTd1CjZ4Y0RuZnEzM0RoZGkwaC9nKzVrejV3dG8rMHcxVS95MlYzYkFmd096dlNpS2ZyT0dFc3NZTlZkdjE3cVNPVUMKakZzL2t2Q21ablMyWkFyL2lBeGVEOHFrQzZaYjU1NTJMUkNpVjRYSEJhZU42Q2QrWVRKTWdWS21CeEZyc3hsRQpQbWF1eE8xYUl3VGYzZVFtRCtuNVluN01rS0NsSWVka2Zyd0hxNHMzWnZ5dnlwbEF3alN3eWVzbUV6LzVHZGs5ClhkaHNmcklsV3E4RHlKaWpOR3lzQk9jZVlPQjZqbUNpanR3RkcwMnViQWZpSU1aL0JSQzgrTzd3anpEZ1JBTHoKT0MyK21ReXRTa0tvOEs2TXNrZkVkalFHWmN0S2FQSVNHMzQ0UFFZL3k0ektCZjFKTnBTZnNUQnphSTlsajdQSwptN3EyVHpNcDhzNUR1R2JLCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+  value             = local.zscaler_ca_b64
   protected         = false
   masked            = false
   environment_scope = "*"
@@ -115,6 +128,78 @@ resource "gitlab_group_variable" "gitlab_push_token" {
   environment_scope = "*"
 }
 
+# Accès en lecture du bot ci_push au groupe shared-ci : requis pour cloner
+# shared-ci/ci-templates (.fetch-scripts) depuis les pipelines des apps, qui
+# vivent dans un groupe top-level distinct de shared-ci.
+resource "gitlab_group_membership" "ci_push_shared_ci" {
+  group_id     = gitlab_group.shared_ci.id
+  user_id      = gitlab_group_access_token.ci_push.user_id
+  access_level = "reporter"
+}
+
+
+# ── Groupes dédiés par app ─────────────────────────────────────────────────────
+# Un groupe GitLab top-level par app (ex. "hello-groupe" pour helloworld),
+# indépendant de infra (pas de lien hiérarchique, donc pas d'héritage des
+# variables du groupe infra) : chaque app est isolée dans son propre groupe,
+# à la fois pour son repo de code et son repo manifests.
+
+resource "gitlab_group" "app" {
+  for_each = local.app_groups
+
+  name             = each.key
+  path             = each.key
+  description      = "Groupe dédié à l'app ${each.value}"
+  visibility_level = "private"
+}
+
+# Le bot GITLAB_PUSH_TOKEN (cf. gitlab_group_access_token.ci_push) n'est
+# membre que du groupe infra par défaut : il lui faut un accès explicite à
+# chaque groupe d'app pour pousser sur les repos de code/manifests qui y
+# vivent (deploy.py, semantic-release), au niveau maintainer requis par
+# gitlab_branch_protection.app_main.
+resource "gitlab_group_membership" "ci_push_app" {
+  for_each = local.app_groups
+
+  group_id     = gitlab_group.app[each.key].id
+  user_id      = gitlab_group_access_token.ci_push.user_id
+  access_level = "maintainer"
+}
+
+# Variables du groupe infra dupliquées par groupe d'app : sans lien
+# hiérarchique entre groupes top-level, aucune variable n'est héritée.
+resource "gitlab_group_variable" "app_ghcr_token" {
+  for_each = local.app_groups
+
+  group             = gitlab_group.app[each.key].id
+  key               = "GHCR_TOKEN"
+  value             = var.github_token
+  protected         = false
+  masked            = true
+  environment_scope = "*"
+}
+
+resource "gitlab_group_variable" "app_zscaler_ca_b64" {
+  for_each = local.app_groups
+
+  group             = gitlab_group.app[each.key].id
+  key               = "ZSCALER_CA_B64"
+  value             = local.zscaler_ca_b64
+  protected         = false
+  masked            = false
+  environment_scope = "*"
+}
+
+resource "gitlab_group_variable" "app_gitlab_push_token" {
+  for_each = local.app_groups
+
+  group             = gitlab_group.app[each.key].id
+  key               = "GITLAB_PUSH_TOKEN"
+  value             = gitlab_group_access_token.ci_push.token
+  protected         = false
+  masked            = true
+  environment_scope = "*"
+}
 
 # ── Projets applicatifs ────────────────────────────────────────────────────────
 # Une entrée par app déclarée dans platform-gitops (cf. locals.app_projects).
@@ -127,7 +212,7 @@ resource "gitlab_project" "app" {
 
   name             = each.value.name
   path             = each.value.name
-  namespace_id     = gitlab_group.infra.id
+  namespace_id     = gitlab_group.app[each.value.group].id
   description      = each.value.description
   visibility_level = "private"
   import_url       = each.value.import_from_github ? "${local.github_base}/${each.value.name}.git" : null
