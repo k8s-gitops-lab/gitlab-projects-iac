@@ -48,10 +48,10 @@ top-level. Deux choses sont donc dupliquées explicitement par groupe d'app
 - les variables `GHCR_TOKEN`, `ZSCALER_CA_B64`, `GITLAB_PUSH_TOKEN` (mêmes
   valeurs que sur `infra`, cf. `local.zscaler_ca_b64` pour éviter de
   dupliquer le blob CA en clair dans le code) ;
-- l'accès du bot `GITLAB_PUSH_TOKEN` (`gitlab_group_access_token.ci_push`,
-  membre de `infra` par défaut) via `gitlab_group_membership.ci_push_app`,
-  au niveau `maintainer` requis pour pousser sur les branches protégées des
-  repos de code/manifests de l'app.
+- l'accès du bot `GITLAB_PUSH_TOKEN` (`gitlab_user.ci_push`, membre de
+  `infra` via `gitlab_group_membership.ci_push_infra`) via
+  `gitlab_group_membership.ci_push_app`, au niveau `maintainer` requis pour
+  pousser sur les branches protégées des repos de code/manifests de l'app.
 
 ## Projets applicatifs
 
@@ -79,6 +79,13 @@ pipelines des apps. Comme ces apps vivent dans des groupes distincts de
 `GITLAB_PUSH_TOKEN` le droit de cloner `shared-ci/ci-templates` (job
 `.fetch-scripts`) depuis n'importe quel groupe d'app.
 
+Note : ce bot est un utilisateur GitLab dédié (`gitlab_user.ci_push`), pas un
+Group/Project Access Token. GitLab refuse qu'un bot issu d'un access token
+soit ajouté comme membre d'un groupe/projet autre que celui qui l'a émis
+("project bots cannot be added to other groups / projects"), ce qui aurait
+cassé cet accès cross-groupe ; un utilisateur réel n'a pas cette
+restriction.
+
 ## Mirroring vers GitHub
 
 `gitlab_project_mirror.app_to_github` et
@@ -99,7 +106,7 @@ restent la source de vérité dupliquée vers chaque groupe d'app :
 | `ZSCALER_CA_B64` | CA interceptée par le proxy Zscaler, encodée en base64 |
 | `CI_TEMPLATES_REF` | Référence (tag) des templates CI/CD partagés à utiliser |
 | `GITHUB_TOKEN` | Réutilisation du token GitHub fourni à Terraform, exposé aux pipelines GitLab CI de `platform-gitops` |
-| `GITLAB_PUSH_TOKEN` | Group Access Token dédié (`gitlab_group_access_token.ci_push`), scopes `api`, `read_repository`, `write_repository` ; dupliqué sur chaque groupe d'app, qui l'utilisent pour cloner `shared-ci/ci-templates` (`.fetch-scripts`) et pousser sur leurs propres repos (`deploy.py`, `semantic-release`) |
+| `GITLAB_PUSH_TOKEN` | Personal Access Token (`gitlab_personal_access_token.ci_push`) d'un utilisateur de service dédié (`gitlab_user.ci_push`), scopes `api`, `read_repository`, `write_repository` ; dupliqué sur chaque groupe d'app, qui l'utilisent pour cloner `shared-ci/ci-templates` (`.fetch-scripts`) et pousser sur leurs propres repos (`deploy.py`, `semantic-release`) |
 
 ## Sécurité et limites
 

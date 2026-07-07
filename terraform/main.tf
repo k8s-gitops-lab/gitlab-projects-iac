@@ -108,24 +108,45 @@ resource "gitlab_group_variable" "github_token_ci" {
 # Token dédié pour les pipelines applicatifs : ci-templates/gitlab-ci.yml
 # (.fetch-scripts, semantic-release) référence GITLAB_PUSH_TOKEN pour cloner
 # shared-ci/ci-templates et créer tags/releases, mais aucune variable ne
-# l'alimentait — jamais provisionné. Un Group Access Token dédié (plutôt que
-# de réutiliser var.gitlab_token, le PAT root donné à Terraform) garde ce
-# credential CI révocable indépendamment et limité au groupe infra.
-resource "gitlab_group_access_token" "ci_push" {
-  group        = gitlab_group.infra.id
-  name         = "ci-push-token"
-  access_level = "maintainer"
-  expires_at   = "2027-06-30"
-  scopes       = ["api", "read_repository", "write_repository"]
+# l'alimentait — jamais provisionné.
+#
+# Utilisateur de service dédié (plutôt qu'un Group Access Token) : GitLab
+# refuse d'ajouter un bot issu d'un access token comme membre d'un groupe ou
+# projet autre que celui qui l'a émis ("project bots cannot be added to
+# other groups / projects"), ce qui casse l'accès cross-groupe requis
+# ci-dessous (shared-ci, groupes d'app). Un vrai compte utilisateur n'a pas
+# cette restriction.
+resource "gitlab_user" "ci_push" {
+  name                  = "CI Push Bot"
+  username              = "ci-push-bot"
+  email                 = "ci-push-bot@k8s-gitops-lab.local"
+  force_random_password = true
+  skip_confirmation     = true
+}
+
+resource "gitlab_personal_access_token" "ci_push" {
+  user_id    = tonumber(gitlab_user.ci_push.id)
+  name       = "ci-push-token"
+  expires_at = "2027-06-30"
+  scopes     = ["api", "read_repository", "write_repository"]
 }
 
 resource "gitlab_group_variable" "gitlab_push_token" {
   group             = gitlab_group.infra.id
   key               = "GITLAB_PUSH_TOKEN"
-  value             = gitlab_group_access_token.ci_push.token
+  value             = gitlab_personal_access_token.ci_push.token
   protected         = false
   masked            = true
   environment_scope = "*"
+}
+
+# Accès du bot ci_push au groupe infra lui-même : requis pour que le
+# pipeline de platform-gitops (hébergé dans infra) pousse ses commits
+# générés vers son propre dépôt.
+resource "gitlab_group_membership" "ci_push_infra" {
+  group_id     = gitlab_group.infra.id
+  user_id      = tonumber(gitlab_user.ci_push.id)
+  access_level = "maintainer"
 }
 
 # Accès en lecture du bot ci_push au groupe shared-ci : requis pour cloner
@@ -133,7 +154,7 @@ resource "gitlab_group_variable" "gitlab_push_token" {
 # vivent dans un groupe top-level distinct de shared-ci.
 resource "gitlab_group_membership" "ci_push_shared_ci" {
   group_id     = gitlab_group.shared_ci.id
-  user_id      = gitlab_group_access_token.ci_push.user_id
+  user_id      = tonumber(gitlab_user.ci_push.id)
   access_level = "reporter"
 }
 
@@ -153,16 +174,16 @@ resource "gitlab_group" "app" {
   visibility_level = "private"
 }
 
-# Le bot GITLAB_PUSH_TOKEN (cf. gitlab_group_access_token.ci_push) n'est
-# membre que du groupe infra par défaut : il lui faut un accès explicite à
-# chaque groupe d'app pour pousser sur les repos de code/manifests qui y
-# vivent (deploy.py, semantic-release), au niveau maintainer requis par
+# Le bot GITLAB_PUSH_TOKEN (cf. gitlab_user.ci_push) n'est membre d'aucun
+# groupe d'app par défaut : il lui faut un accès explicite à chaque groupe
+# pour pousser sur les repos de code/manifests qui y vivent (deploy.py,
+# semantic-release), au niveau maintainer requis par
 # gitlab_branch_protection.app_main.
 resource "gitlab_group_membership" "ci_push_app" {
   for_each = local.app_groups
 
   group_id     = gitlab_group.app[each.key].id
-  user_id      = gitlab_group_access_token.ci_push.user_id
+  user_id      = tonumber(gitlab_user.ci_push.id)
   access_level = "maintainer"
 }
 
@@ -195,7 +216,7 @@ resource "gitlab_group_variable" "app_gitlab_push_token" {
 
   group             = gitlab_group.app[each.key].id
   key               = "GITLAB_PUSH_TOKEN"
-  value             = gitlab_group_access_token.ci_push.token
+  value             = gitlab_personal_access_token.ci_push.token
   protected         = false
   masked            = true
   environment_scope = "*"
