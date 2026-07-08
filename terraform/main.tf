@@ -107,7 +107,7 @@ resource "gitlab_group_variable" "ci_templates_ref" {
 
 # Réutilise le token GitHub déjà fourni au Terraform (var.github_token, utilisé
 # pour le mirroring GitLab → GitHub) pour l'exposer au pipeline GitLab CI de
-# platform-gitops : clone de platform-cicd/toolbox (privés) et push des commits
+# platform-gitops : clone de platform-bootstrap/toolbox (privés) et push des commits
 # générés vers les dépôts GitHub canoniques. Confirmé explicitement par
 # l'utilisateur (duplication volontaire d'un secret existant vers une CI/CD
 # variable GitLab).
