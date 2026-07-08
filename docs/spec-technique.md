@@ -103,7 +103,8 @@ restent la source de vérité dupliquée vers chaque groupe d'app :
 | Variable | Usage |
 |---|---|
 | `GHCR_TOKEN` | Token pour push/pull sur GHCR (registre applicatif réel, `ghcr.io`), utilisé par les pipelines d'app (job `.build` de `ci-templates`) |
-| `ZSCALER_CA_B64` | CA interceptée par le proxy Zscaler, encodée en base64 |
+| `ZSCALER_CA_B64` | CA interceptée par le proxy Zscaler, encodée en base64 (usage historique, job Kaniko qui décodait lui-même) |
+| `CUSTOM_CA_CERTS` | Même CA que `ZSCALER_CA_B64`, décodée (`base64decode`) en PEM brut — lue automatiquement par les composants to-be-continuous de `ci-templates` (`build-docker`, `promote`) |
 | `CI_TEMPLATES_REF` | Référence (tag) des templates CI/CD partagés à utiliser |
 | `GITHUB_TOKEN` | Réutilisation du token GitHub fourni à Terraform, exposé aux pipelines GitLab CI de `platform-gitops` |
 | `GITLAB_PUSH_TOKEN` | Personal Access Token (`gitlab_personal_access_token.ci_push`) d'un utilisateur de service dédié (`gitlab_user.ci_push`), scopes `api`, `read_repository`, `write_repository` ; dupliqué sur chaque groupe d'app, qui l'utilisent pour cloner `shared-ci/ci-templates` (`.fetch-scripts`) et pousser sur leurs propres repos (`deploy.py`, `semantic-release`) |

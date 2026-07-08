@@ -81,6 +81,21 @@ resource "gitlab_group_variable" "zscaler_ca_b64" {
   environment_scope = "*"
 }
 
+# Meme CA que ZSCALER_CA_B64, mais decodee (PEM brut, pas de base64) : lue
+# automatiquement par les composants to-be-continuous (build-docker,
+# semantic-release de ci-templates) via leur fonction commune
+# install_custom_ca_certs/install_ca_certs, qui attend CUSTOM_CA_CERTS deja
+# en clair — contrairement au job Kaniko historique qui decodait lui-meme
+# ZSCALER_CA_B64 a la main.
+resource "gitlab_group_variable" "custom_ca_certs" {
+  group             = gitlab_group.infra.id
+  key               = "CUSTOM_CA_CERTS"
+  value             = base64decode(local.zscaler_ca_b64)
+  protected         = false
+  masked            = false
+  environment_scope = "*"
+}
+
 resource "gitlab_group_variable" "ci_templates_ref" {
   group             = gitlab_group.infra.id
   key               = "CI_TEMPLATES_REF"
@@ -206,6 +221,19 @@ resource "gitlab_group_variable" "app_zscaler_ca_b64" {
   group             = gitlab_group.app[each.key].id
   key               = "ZSCALER_CA_B64"
   value             = local.zscaler_ca_b64
+  protected         = false
+  masked            = false
+  environment_scope = "*"
+}
+
+# cf. gitlab_group_variable.custom_ca_certs (groupe infra) : meme besoin cote
+# pipelines applicatifs (build-docker, semantic-release de ci-templates).
+resource "gitlab_group_variable" "app_custom_ca_certs" {
+  for_each = local.app_groups
+
+  group             = gitlab_group.app[each.key].id
+  key               = "CUSTOM_CA_CERTS"
+  value             = base64decode(local.zscaler_ca_b64)
   protected         = false
   masked            = false
   environment_scope = "*"
