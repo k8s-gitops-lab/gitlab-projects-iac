@@ -61,6 +61,36 @@ resource "gitlab_group" "shared_ci" {
   visibility_level = "private"
 }
 
+# ── Miroir local to-be-continuous ────────────────────────────────────────────
+# GitLab ne résout `include:component` que sur des projets de sa propre
+# instance : les composants amont (gitlab.com/to-be-continuous/*) consommés
+# par shared-ci/ci-templates (build-docker, promote) doivent donc être
+# mirrorés ici, sous le même chemin relatif, et référencés via
+# $CI_SERVER_FQDN/to-be-continuous/<projet>/<template>@<version>.
+# Visibilité internal : lisibles par tout utilisateur authentifié, donc par
+# les pipelines des groupes d'app sans membership explicite. L'import par URL
+# ramène branches et tags (les versions pinnées par ci-templates).
+
+resource "gitlab_group" "to_be_continuous" {
+  name             = "to-be-continuous"
+  path             = "to-be-continuous"
+  description      = "Miroir local des composants CI to-be-continuous (gitlab.com)"
+  visibility_level = "internal"
+}
+
+resource "gitlab_project" "tbc" {
+  for_each = toset(["docker", "semantic-release"])
+
+  name             = each.key
+  path             = each.key
+  namespace_id     = gitlab_group.to_be_continuous.id
+  description      = "Miroir de gitlab.com/to-be-continuous/${each.key}"
+  visibility_level = "internal"
+  import_url       = "https://gitlab.com/to-be-continuous/${each.key}.git"
+
+  depends_on = [gitlab_application_settings.main]
+}
+
 # ── Variables CI/CD du groupe infra ──────────────────────────────────────────
 
 resource "gitlab_group_variable" "ghcr_token" {

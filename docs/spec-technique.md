@@ -86,6 +86,20 @@ soit ajouté comme membre d'un groupe/projet autre que celui qui l'a émis
 cassé cet accès cross-groupe ; un utilisateur réel n'a pas cette
 restriction.
 
+## Groupe `to-be-continuous` (miroir local)
+
+GitLab ne résout `include:component` que sur des projets de sa propre
+instance : les composants amont consommés par `ci-templates`
+(`gitlab.com/to-be-continuous/docker`, `.../semantic-release`) sont donc
+mirrorés localement (`gitlab_group.to_be_continuous`, `gitlab_project.tbc`,
+import par URL — branches et tags compris) et référencés dans les templates
+via `$CI_SERVER_FQDN/to-be-continuous/<projet>/<template>@<version>`.
+Visibilité `internal` : lisibles par tout utilisateur authentifié, donc par
+les pipelines des groupes d'app sans membership explicite. Le miroir est
+figé à l'import (pas de pull mirror, fonctionnalité GitLab Premium) : pour
+consommer une version amont plus récente que l'import initial, recréer les
+projets (`terraform taint`/`-replace`) ou pousser les refs à la main.
+
 ## Mirroring vers GitHub
 
 `gitlab_project_mirror.app_to_github` et
