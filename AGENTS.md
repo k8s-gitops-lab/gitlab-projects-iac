@@ -30,3 +30,10 @@ historiques) : [`docs/spec-fonctionnelle.md`](./docs/spec-fonctionnelle.md).
 - Ne pas retirer les blocs `moved` sans vérifier au préalable (`terraform
   state list`) que les adresses ont bien été migrées — `approvePlan: auto`
   n'offre aucun filet de sécurité en cas de plan destructeur.
+
+## Gouvernance du développement
+
+Ce repo fait partie de la plateforme poc-devops : toute contribution suit
+les trois axes de maîtrise (produit, code, architecture) définis dans
+`cockpit/AGENTS.md`, section « Gouvernance du développement » — PRD et
+backlog dans `cockpit/docs/`.
