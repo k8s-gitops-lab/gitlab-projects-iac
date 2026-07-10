@@ -112,29 +112,20 @@ resource "gitlab_project" "helloworld_iac" {
   visibility_level = "private"
 }
 
-# ── CI/CD : bot de push dedie + variables de groupe ──────────────────────────
-# terraform/main.tf (instance locale) utilise un vrai compte utilisateur
-# (gitlab_user.ci_push) car un bot de groupe ne peut pas rejoindre un AUTRE
-# groupe top-level (restriction GitLab). Ici inutile : hello-groupe est un
-# sous-groupe du groupe racine, donc herite nativement de l'acces d'un bot
-# cree sur ce dernier. Un vrai gitlab_user est de toute facon impossible sur
-# gitlab.com (POST /api/v4/users -> 403, reserve a l'admin d'instance,
-# jamais accessible a un compte SaaS standard, verifie le 2026-07-10) :
-# gitlab_group_access_token (bot de groupe, pas un utilisateur) est le seul
-# mecanisme disponible ici.
-
-resource "gitlab_group_access_token" "ci_push" {
-  group        = gitlab_group.root.id
-  name         = "ci-push-token"
-  access_level = "maintainer"
-  expires_at   = "2027-07-10"
-  scopes       = ["api", "read_repository", "write_repository"]
-}
-
+# ── CI/CD : token de push + variables de groupe ──────────────────────────────
+# Pas de bot dedie ici : gitlab_user impossible sur gitlab.com (POST
+# /api/v4/users -> 403, admin d'instance requis) et gitlab_group_access_token
+# refuse aussi (400 "User does not have permission" -- indisponible sur le
+# tier Free de gitlab.com, verifie en direct le 2026-07-10). Bascule big
+# bang : reutilise le PAT proprietaire (var.gitlab_token, deja scope
+# api+read/write repository) plutot que bloquer sur un mecanisme de bot
+# scope indisponible sur ce compte -- dette assumee, cf.
+# cockpit/docs/backlog.md (axe 7, deja suivie comme dette de securite
+# generale, pas specifique a cette migration).
 resource "gitlab_group_variable" "gitlab_push_token" {
   group             = gitlab_group.root.id
   key               = "GITLAB_PUSH_TOKEN"
-  value             = gitlab_group_access_token.ci_push.token
+  value             = var.gitlab_token
   protected         = false
   masked            = true
   environment_scope = "*"
