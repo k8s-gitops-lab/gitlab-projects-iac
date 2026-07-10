@@ -178,3 +178,18 @@ resource "gitlab_group_variable" "gitlab_push_username" {
   masked            = false
   environment_scope = "*"
 }
+
+# .fetch-scripts (ci-templates) clone shared-ci/ci-templates depuis
+# INTERNAL_GITLAB_HOST -- chemin relatif suppose des groupes top-level
+# (vrai en local), faux sur gitlab.com ou shared-ci est un sous-groupe de
+# k8s-gitops-lab. Sans cette surcharge, la resolution du chemin de clone
+# echoue silencieusement sur un mauvais chemin (verifie le 2026-07-10,
+# meme cause que l'echec de resolution des include:component).
+resource "gitlab_group_variable" "ci_templates_project_path" {
+  group             = gitlab_group.root.id
+  key               = "CI_TEMPLATES_PROJECT_PATH"
+  value             = "k8s-gitops-lab/shared-ci/ci-templates"
+  protected         = false
+  masked            = false
+  environment_scope = "*"
+}
