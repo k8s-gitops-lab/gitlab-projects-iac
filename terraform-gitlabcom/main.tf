@@ -41,9 +41,9 @@ locals {
 }
 
 resource "gitlab_group" "root" {
-  name             = "k8s-gitops-lab"
-  path             = "k8s-gitops-lab"
-  description      = "POC CI/CD GitOps -- groupe racine (migration depuis le GitLab self-hosted local)"
+  name        = "k8s-gitops-lab"
+  path        = "k8s-gitops-lab"
+  description = "POC CI/CD GitOps -- groupe racine (migration depuis le GitLab self-hosted local)"
   # Cree manuellement via l'UI (creation de groupe top-level bloquee via API
   # sur ce compte, 403 sans detail malgre can_create_group=true -- probable
   # restriction anti-abus gitlab.com), puis importe dans l'etat Terraform.
@@ -113,39 +113,28 @@ resource "gitlab_project" "helloworld_iac" {
 }
 
 # ── CI/CD : bot de push dedie + variables de groupe ──────────────────────────
-# Meme pattern que terraform/main.tf (instance locale, gitlab_user.ci_push) :
-# un vrai compte utilisateur plutot qu'un token de projet, pour ne pas
-# heurter la restriction GitLab "project bots cannot be added to other
-# groups/projects" (acces cross-groupe requis : shared-ci + hello-groupe).
-# Contrairement a local, ces variables sont posees une seule fois sur le
-# groupe racine : gitlab.com a une vraie hierarchie de sous-groupes, donc
-# heritage natif -- pas besoin de dupliquer par groupe d'app.
+# terraform/main.tf (instance locale) utilise un vrai compte utilisateur
+# (gitlab_user.ci_push) car un bot de groupe ne peut pas rejoindre un AUTRE
+# groupe top-level (restriction GitLab). Ici inutile : hello-groupe est un
+# sous-groupe du groupe racine, donc herite nativement de l'acces d'un bot
+# cree sur ce dernier. Un vrai gitlab_user est de toute facon impossible sur
+# gitlab.com (POST /api/v4/users -> 403, reserve a l'admin d'instance,
+# jamais accessible a un compte SaaS standard, verifie le 2026-07-10) :
+# gitlab_group_access_token (bot de groupe, pas un utilisateur) est le seul
+# mecanisme disponible ici.
 
-resource "gitlab_user" "ci_push" {
-  name                  = "CI Push Bot"
-  username              = "ci-push-bot"
-  email                 = "ci-push-bot@k8s-gitops-lab.local"
-  force_random_password = true
-  skip_confirmation     = true
-}
-
-resource "gitlab_personal_access_token" "ci_push" {
-  user_id    = tonumber(gitlab_user.ci_push.id)
-  name       = "ci-push-token"
-  expires_at = "2027-07-10"
-  scopes     = ["api", "read_repository", "write_repository"]
-}
-
-resource "gitlab_group_membership" "ci_push_root" {
-  group_id     = gitlab_group.root.id
-  user_id      = tonumber(gitlab_user.ci_push.id)
+resource "gitlab_group_access_token" "ci_push" {
+  group        = gitlab_group.root.id
+  name         = "ci-push-token"
   access_level = "maintainer"
+  expires_at   = "2027-07-10"
+  scopes       = ["api", "read_repository", "write_repository"]
 }
 
 resource "gitlab_group_variable" "gitlab_push_token" {
   group             = gitlab_group.root.id
   key               = "GITLAB_PUSH_TOKEN"
-  value             = gitlab_personal_access_token.ci_push.token
+  value             = gitlab_group_access_token.ci_push.token
   protected         = false
   masked            = true
   environment_scope = "*"
