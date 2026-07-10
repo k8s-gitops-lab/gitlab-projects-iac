@@ -50,6 +50,13 @@ resource "gitlab_group" "root" {
   # Public choisi explicitement par l'utilisateur (les groupes locaux sont
   # prives, mais rien ne l'impose ici).
   visibility_level = "public"
+  # Sans ceci, les jobs sans tag (cas de tous nos pipelines) sont eligibles
+  # aussi bien a notre runner group_type qu'aux runners SaaS partages -- et
+  # gitlab.com a systematiquement prefere le partage lors de la validation
+  # du 2026-07-10, produisant des images amd64 sur un cluster arm64
+  # (exec format error). unoverridable pour qu'aucun sous-groupe/projet ne
+  # puisse le reactiver par erreur -- cf. cockpit/docs/backlog.md.
+  shared_runners_setting = "disabled_and_unoverridable"
 }
 
 resource "gitlab_group" "infra" {
