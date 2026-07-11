@@ -7,9 +7,4 @@ terraform {
       version = "~> 17.0"
     }
   }
-  backend "kubernetes" {
-    secret_suffix     = "gitlab-projects-iac"
-    namespace         = "flux-system"
-    in_cluster_config = true
-  }
 }

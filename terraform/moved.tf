@@ -1,7 +1,16 @@
-# Refactor des projets applicatifs codés en dur vers un for_each piloté par
-# var.apps (généré depuis platform-gitops). Ces blocs évitent un destroy+create
-# des projets GitLab existants (approvePlan est "auto" sur ce Terraform : un
-# plan destructeur s'appliquerait sans revue humaine).
+# Consolidation terraform-gitlabcom/ -> terraform/ (cf. cockpit/docs/backlog.md) :
+# les groupes/projets applicatifs codés en dur passent au for_each piloté par
+# var.apps. Ces blocs évitent un destroy+create du groupe et des deux projets
+# existants (approvePlan est "auto" sur ce Terraform : un plan destructeur
+# s'appliquerait sans revue humaine). Les projets seront tout de même
+# recréés par Terraform à cause de l'ajout d'import_url (ForceNew) — c'est
+# le but recherché (réimport du contenu depuis GitHub) — mais le groupe, lui,
+# ne sera pas détruit.
+moved {
+  from = gitlab_group.hello_groupe
+  to   = gitlab_group.app["hello-groupe"]
+}
+
 moved {
   from = gitlab_project.helloworld
   to   = gitlab_project.app["helloworld"]
@@ -10,24 +19,4 @@ moved {
 moved {
   from = gitlab_project.helloworld_iac
   to   = gitlab_project.app["helloworld-iac"]
-}
-
-moved {
-  from = gitlab_branch_protection.helloworld_main
-  to   = gitlab_branch_protection.app_main["helloworld"]
-}
-
-moved {
-  from = gitlab_branch_protection.helloworld_iac_main
-  to   = gitlab_branch_protection.app_main["helloworld-iac"]
-}
-
-moved {
-  from = gitlab_project_mirror.helloworld_to_github
-  to   = gitlab_project_mirror.app_to_github["helloworld"]
-}
-
-moved {
-  from = gitlab_project_mirror.helloworld_iac_to_github
-  to   = gitlab_project_mirror.app_to_github["helloworld-iac"]
 }
